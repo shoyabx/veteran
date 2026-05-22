@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     ATTACHMENT_PARSER_MAX_CHARS: int = 250000
     WORKER_JOB_TIMEOUT_SECONDS: int = 600
     WORKER_MAX_RETRIES: int = 5
+    RETRIEVAL_TOP_K_DEFAULT: int = 10
+    RETRIEVAL_TOP_K_MAX: int = 50
+    RETRIEVAL_SCORE_THRESHOLD_DEFAULT: float = 0.2
+    RETRIEVAL_RATE_LIMIT_PER_MINUTE: int = 60
     CORS_ORIGINS: str = 'http://localhost:3000'
 
     AUTH_COOKIE_NAME: str = 'veteran_session'

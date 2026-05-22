@@ -116,6 +116,25 @@ services:
       qdrant:
         condition: service_healthy
 
+  retrieval-worker:
+    build:
+      context: ./backend
+    command: ["python", "-m", "app.worker.retrieval_worker"]
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/veteran
+      JWT_SECRET_KEY: change-me
+      JWT_ALGORITHM: HS256
+      TOKEN_ENCRYPTION_KEY: REPLACE_WITH_FERNET_KEY
+      OPENAI_API_KEY: replace-me
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_API_KEY: ""
+      APP_ENV: development
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+
   dead-letter-queue:
     image: alpine:3.20
     command: ["sh", "-c", "while true; do sleep 3600; done"]

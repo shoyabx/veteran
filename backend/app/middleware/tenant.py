@@ -1,7 +1,7 @@
 from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse
 
-PROTECTED_PREFIXES = ('/api/v1/auth', '/api/v1/ingestion', '/api/v1/indexing')
+PROTECTED_PREFIXES = ('/api/v1/auth', '/api/v1/ingestion', '/api/v1/indexing', '/api/v1/retrieval')
 
 class TenantIsolationMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
