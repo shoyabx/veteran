@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, 'feature/**', 'hotfix/**']
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install frontend deps (if present)
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend
+            npm ci
+          fi
+      - name: Run frontend lint (if present)
+        run: |
+          if [ -f frontend/package.json ]; then
+            cd frontend
+            npm run lint --if-present
+          fi
+
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install backend deps (if present)
+        run: |
+          if [ -f backend/requirements.txt ]; then
+            python -m pip install --upgrade pip
+            pip install -r backend/requirements.txt
+          fi
+      - name: Run backend tests (if present)
+        run: |
+          if [ -d tests ] && [ "$(find tests -type f | wc -l)" -gt 0 ]; then
+            pytest -q
+          else
+            echo "No backend tests discovered yet."
+          fi
+
+  docker-validate:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build docker-compose services (if compose exists)
+        run: |
+          if [ -f docker-compose.yml ]; then
+            docker compose config
+          fi
+
+  deploy-validation:
+    name: Deployment Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment manifests (placeholder)
+        run: |
+          if [ -d infrastructure ]; then
+            echo "Infrastructure directory present. Add terraform/k8s validators here."
+          fi
