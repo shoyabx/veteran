@@ -21,6 +21,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.auth_provider = 'microsoft'
         token.email = token.email || profile.email || ''
         token.access_token = account.access_token
+        token.id_token = account.id_token
       }
       return token
     },
@@ -32,6 +33,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         role: (token.role as string) || 'member',
         auth_provider: 'microsoft',
         email: String(token.email || session.user?.email || ''),
+        access_token: String(token.access_token || ''),
+        id_token: String(token.id_token || ''),
       } as any
       return session
     },
