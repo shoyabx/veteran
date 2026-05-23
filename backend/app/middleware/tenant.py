@@ -11,8 +11,24 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(status_code=401, content={'error': {'code': 'unauthorized', 'message': 'Authentication required'}})
 
             tenant_header = request.headers.get('x-tenant-id')
-            if tenant_header and int(tenant_header) != user['tenant_id']:
-                return JSONResponse(status_code=403, content={'error': {'code': 'tenant_forbidden', 'message': 'Cross-tenant request blocked'}})
+            if tenant_header:
+                matched_id = None
+                if tenant_header.isdigit():
+                    matched_id = int(tenant_header)
+                else:
+                    from app.db.session import SessionLocal
+                    from sqlalchemy import select
+                    from app.models.models import Tenant
+                    db = SessionLocal()
+                    try:
+                        tenant = db.scalar(select(Tenant).where(Tenant.name == tenant_header))
+                        if tenant:
+                            matched_id = tenant.id
+                    finally:
+                        db.close()
+
+                if matched_id is None or matched_id != user['tenant_id']:
+                    return JSONResponse(status_code=403, content={'error': {'code': 'tenant_forbidden', 'message': 'Cross-tenant request blocked'}})
 
             request.state.tenant_id = user['tenant_id']
         return await call_next(request)

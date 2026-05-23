@@ -40,6 +40,7 @@ def retrieval_query(payload: RetrievalQueryRequest, request: Request, db: Sessio
         top_k=payload.top_k,
         score_threshold=payload.score_threshold,
         correlation_id=correlation_id,
+        synthesize=payload.synthesize,
     )
     return RetrievalQueryResponse(query_id=q.id, status=q.status)
 
@@ -68,7 +69,21 @@ def retrieval_query_status(query_id: int, request: Request, db: Session = Depend
         citation_payload=r.citation_payload,
     ) for r in rows]
 
-    return RetrievalQueryStatusResponse(query_id=q.id, status=q.status, created_at=q.created_at, results=results)
+    return RetrievalQueryStatusResponse(
+        query_id=q.id,
+        status=q.status,
+        created_at=q.created_at,
+        results=results,
+        answer=q.answer,
+        evidence_snapshot_hash=q.evidence_snapshot_hash,
+        retrieval_version=q.retrieval_version,
+        synthesis_version=q.synthesis_version,
+        citation_checksum=q.citation_checksum,
+        vector_index_version=q.vector_index_version,
+        unsupported_claim_risk=q.unsupported_claim_risk,
+        retrieval_coverage_score=q.retrieval_coverage_score,
+        synthesis_validation_status=q.synthesis_validation_status,
+    )
 
 
 @router.get('/evidence/{query_id}', response_model=RetrievalEvidenceResponse)

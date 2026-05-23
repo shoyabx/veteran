@@ -12,12 +12,16 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = 'HS256'
 
+    AZURE_CLIENT_ID: str = 'replace-me'
+    AZURE_TENANT_ID: str = 'common'
+
     TOKEN_ENCRYPTION_KEY: str
     OPENAI_API_KEY: str
     QDRANT_URL: str
     QDRANT_API_KEY: str | None = None
     EMBEDDING_PROVIDER: str = 'openai'
     EMBEDDING_MODEL: str = 'text-embedding-3-small'
+    SYNTHESIS_MODEL: str = 'gpt-4o-mini'
     EMBEDDING_BATCH_SIZE: int = 64
     EMBEDDING_CONTEXT_TOKENS: int = 8192
     EMBEDDING_RESERVED_HEADROOM: int = 1024

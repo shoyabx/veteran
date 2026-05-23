@@ -57,7 +57,85 @@ async def run_embedding_job(db: Session, job: EmbeddingJob) -> EmbeddingJob:
 
         state = db.scalar(select(VectorIndexState).where(VectorIndexState.tenant_id == job.tenant_id, VectorIndexState.mailbox_id == mailbox.id))
         after_id = state.last_indexed_email_id if state and state.last_indexed_email_id else 0
-        emails = db.scalars(select(Email).where(Email.tenant_id == job.tenant_id, Email.mailbox_id == mailbox.id, Email.id > after_id, Email.is_deleted == False).order_by(Email.id.asc()).limit(100)).all()
+
+        # --- A. RECONCILE DELETED EMAILS (PURGE FROM QDRANT & DB) ---
+        deleted_emails = db.scalars(
+            select(Email).where(
+                Email.tenant_id == job.tenant_id,
+                Email.mailbox_id == mailbox.id,
+                Email.is_deleted == True
+            )
+        ).all()
+        for de in deleted_emails:
+            chunk_exists = db.scalar(select(IndexedChunk).where(IndexedChunk.tenant_id == job.tenant_id, IndexedChunk.email_id == de.id))
+            if chunk_exists:
+                try:
+                    qdrant.delete_vectors_by_email(job.tenant_id, de.id)
+                except Exception as q_err:
+                    db.add(EmbeddingFailure(
+                        tenant_id=job.tenant_id,
+                        job_id=job.id,
+                        stage='deleted_email_reconciliation',
+                        error_code='qdrant_delete_failed',
+                        error_message=str(q_err),
+                        retryable=True
+                    ))
+                    continue
+
+                db.query(IndexedChunk).filter(IndexedChunk.tenant_id == job.tenant_id, IndexedChunk.email_id == de.id).delete()
+                de_att_ids = db.scalars(select(Attachment.id).where(Attachment.email_id == de.id)).all()
+                if de_att_ids:
+                    db.query(AttachmentChunk).filter(AttachmentChunk.tenant_id == job.tenant_id, AttachmentChunk.attachment_id.in_(de_att_ids)).delete()
+
+        # --- B. PROCESS MODIFIED AND NEW EMAILS ---
+        emails_to_index = []
+        if state and state.last_indexed_at:
+            modified = db.scalars(
+                select(Email).where(
+                    Email.tenant_id == job.tenant_id,
+                    Email.mailbox_id == mailbox.id,
+                    Email.is_deleted == False,
+                    Email.updated_at > state.last_indexed_at
+                )
+            ).all()
+            for me in modified:
+                try:
+                    qdrant.delete_vectors_by_email(job.tenant_id, me.id)
+                except Exception as q_err:
+                    db.add(EmbeddingFailure(
+                        tenant_id=job.tenant_id,
+                        job_id=job.id,
+                        stage='modified_email_reconciliation',
+                        error_code='qdrant_delete_failed',
+                        error_message=str(q_err),
+                        retryable=True
+                    ))
+                    continue
+
+                db.query(IndexedChunk).filter(IndexedChunk.tenant_id == job.tenant_id, IndexedChunk.email_id == me.id).delete()
+                me_att_ids = db.scalars(select(Attachment.id).where(Attachment.email_id == me.id)).all()
+                if me_att_ids:
+                    db.query(AttachmentChunk).filter(AttachmentChunk.tenant_id == job.tenant_id, AttachmentChunk.attachment_id.in_(me_att_ids)).delete()
+
+                emails_to_index.append(me)
+
+        new_emails = db.scalars(
+            select(Email).where(
+                Email.tenant_id == job.tenant_id,
+                Email.mailbox_id == mailbox.id,
+                Email.id > after_id,
+                Email.is_deleted == False
+            ).order_by(Email.id.asc()).limit(100)
+        ).all()
+        emails_to_index.extend(new_emails)
+
+        # Deduplicate to prevent processing the same email twice
+        seen_ids = set()
+        emails = []
+        for e in emails_to_index:
+            if e.id not in seen_ids:
+                seen_ids.add(e.id)
+                emails.append(e)
 
         all_chunks = []
         lineage = []

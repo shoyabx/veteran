@@ -33,10 +33,15 @@ class TenantQdrant:
     def search_vectors(self, tenant_id: int, query_vector: list[float], top_k: int, score_threshold: float = 0.0, filters: dict | None = None):
         must = [FieldCondition(key='tenant_id', match=MatchValue(value=tenant_id))]
         for f in (filters or {}).get('must', []):
-            key = f.get('key')
-            mv = f.get('match', {}).get('value') if f.get('match') else None
-            if key is not None and mv is not None:
-                must.append(FieldCondition(key=key, match=MatchValue(value=mv)))
+            if 'is_null' in f:
+                empty_key = f['is_null'].get('key')
+                if empty_key:
+                    must.append(models.IsEmptyCondition(key=empty_key))
+            else:
+                key = f.get('key')
+                mv = f.get('match', {}).get('value') if f.get('match') else None
+                if key is not None and mv is not None:
+                    must.append(FieldCondition(key=key, match=MatchValue(value=mv)))
         filt = Filter(must=must)
         return self.client.search(
             collection_name=self.collection_name(tenant_id),

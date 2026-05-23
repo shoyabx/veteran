@@ -20,6 +20,17 @@ class RetrievalQuery(Base):
     status: Mapped[str] = mapped_column(String(32), nullable=False, default='completed')
     correlation_id: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Synthesis & Calibration Fields
+    answer: Mapped[str] = mapped_column(Text, nullable=True)
+    evidence_snapshot_hash: Mapped[str] = mapped_column(String(64), nullable=True)
+    retrieval_version: Mapped[int] = mapped_column(Integer, nullable=True, default=1)
+    synthesis_version: Mapped[int] = mapped_column(Integer, nullable=True, default=1)
+    citation_checksum: Mapped[str] = mapped_column(String(64), nullable=True)
+    vector_index_version: Mapped[str] = mapped_column(String(32), nullable=True)
+    unsupported_claim_risk: Mapped[float] = mapped_column(Float, nullable=True)
+    retrieval_coverage_score: Mapped[float] = mapped_column(Float, nullable=True)
+    synthesis_validation_status: Mapped[str] = mapped_column(String(32), nullable=True)
 
 
 class RetrievalResult(Base):

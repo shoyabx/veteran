@@ -10,6 +10,7 @@ class RetrievalQueryRequest(BaseModel):
     top_k: int = Field(default=10, ge=1, le=50)
     score_threshold: float = Field(default=0.2, ge=0.0, le=1.0)
     filters: dict[str, Any] | None = None
+    synthesize: bool = Field(default=True)
 
 
 class RetrievalQueryResponse(BaseModel):
@@ -38,6 +39,15 @@ class RetrievalQueryStatusResponse(BaseModel):
     status: str
     created_at: datetime
     results: list[RetrievalResultItem]
+    answer: Optional[str] = None
+    evidence_snapshot_hash: Optional[str] = None
+    retrieval_version: Optional[int] = None
+    synthesis_version: Optional[int] = None
+    citation_checksum: Optional[str] = None
+    vector_index_version: Optional[str] = None
+    unsupported_claim_risk: Optional[float] = None
+    retrieval_coverage_score: Optional[float] = None
+    synthesis_validation_status: Optional[str] = None
 
 
 class RetrievalEvidenceResponse(BaseModel):

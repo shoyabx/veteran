@@ -17,8 +17,8 @@ app = FastAPI(title=settings.APP_NAME, version=settings.APP_VERSION)
 register_exception_handlers(app)
 
 app.add_middleware(RequestContextMiddleware)
-app.add_middleware(AuthMiddleware)
 app.add_middleware(TenantIsolationMiddleware)
+app.add_middleware(AuthMiddleware)
 
 app.include_router(health_router, prefix='/api/v1')
 app.include_router(auth_router, prefix='/api/v1')

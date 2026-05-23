@@ -38,6 +38,7 @@ def run_retrieval_query(
     top_k: int,
     score_threshold: float,
     correlation_id: str,
+    synthesize: bool = True,
 ) -> RetrievalQuery:
     model_name = settings.EMBEDDING_MODEL
     n = normalize_query(query_text, model_name)
@@ -153,6 +154,25 @@ def run_retrieval_query(
         db.add(row)
         persisted_rows.append(row)
         rank += 1
+
+    # Perform Conversational Synthesis if enabled
+    if synthesize:
+        from app.services.synthesis_service import SynthesisService
+        # Commit results first so that chunk texts can be loaded in synthesis check functions
+        db.commit(); db.refresh(rq)
+        
+        evidence = get_evidence_bundle(db, tenant_id, rq.id)
+        answer, metrics = SynthesisService.synthesize(db, tenant_id, query_text, evidence, correlation_id)
+        
+        rq.answer = answer
+        rq.evidence_snapshot_hash = metrics.get('evidence_snapshot_hash')
+        rq.retrieval_version = 1
+        rq.synthesis_version = 1
+        rq.citation_checksum = metrics.get('citation_checksum')
+        rq.vector_index_version = '1.0'
+        rq.unsupported_claim_risk = metrics.get('unsupported_claim_risk')
+        rq.retrieval_coverage_score = metrics.get('retrieval_coverage_score')
+        rq.synthesis_validation_status = metrics.get('synthesis_validation_status')
 
     rq.status = 'completed'
     db.add(RetrievalTelemetry(tenant_id=tenant_id, query_id=rq.id, metric_name='retrieval_total_latency_ms', metric_value=float(total_timer.elapsed_ms()), tags=None, correlation_id=correlation_id))
